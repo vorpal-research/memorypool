@@ -23,7 +23,10 @@
 #ifndef MEMORY_BLOCK_TCC
 #define MEMORY_BLOCK_TCC
 
-
+template<class D, class S>
+D absolute_cast(S* s) {
+    return reinterpret_cast<D>(const_cast<std::remove_const_t<S>*>(s));
+};
 
 template <typename T, size_t BlockSize>
 inline typename MemoryPool<T, BlockSize>::size_type
@@ -135,13 +138,13 @@ MemoryPool<T, BlockSize>::allocateBlock()
   // Allocate space for the new block and store a pointer to the previous one
   data_pointer_ newBlock = reinterpret_cast<data_pointer_>
                            (operator new(BlockSize));
-  reinterpret_cast<slot_pointer_>(newBlock)->next = currentBlock_;
-  currentBlock_ = reinterpret_cast<slot_pointer_>(newBlock);
+    absolute_cast<slot_pointer_>(newBlock)->next = currentBlock_;
+  currentBlock_ = absolute_cast<slot_pointer_>(newBlock);
   // Pad block body to staisfy the alignment requirements for elements
   data_pointer_ body = newBlock + sizeof(slot_pointer_);
   size_type bodyPadding = padPointer(body, alignof(slot_type_));
-  currentSlot_ = reinterpret_cast<slot_pointer_>(body + bodyPadding);
-  lastSlot_ = reinterpret_cast<slot_pointer_>
+  currentSlot_ = absolute_cast<slot_pointer_>(body + bodyPadding);
+  lastSlot_ = absolute_cast<slot_pointer_>
               (newBlock + BlockSize - sizeof(slot_type_) + 1);
 }
 
@@ -151,15 +154,16 @@ template <typename T, size_t BlockSize>
 inline typename MemoryPool<T, BlockSize>::pointer
 MemoryPool<T, BlockSize>::allocate(size_type n, const_pointer hint)
 {
+  assert(n == 1);
   if (freeSlots_ != nullptr) {
-    pointer result = reinterpret_cast<pointer>(freeSlots_);
+    pointer result = ptr_cast(freeSlots_);
     freeSlots_ = freeSlots_->next;
     return result;
   }
   else {
     if (currentSlot_ >= lastSlot_)
       allocateBlock();
-    return reinterpret_cast<pointer>(currentSlot_++);
+    return ptr_cast(currentSlot_++);
   }
 }
 
@@ -169,12 +173,23 @@ template <typename T, size_t BlockSize>
 inline void
 MemoryPool<T, BlockSize>::deallocate(pointer p, size_type n)
 {
+  assert(n == 1);
   if (p != nullptr) {
-    reinterpret_cast<slot_pointer_>(p)->next = freeSlots_;
-    freeSlots_ = reinterpret_cast<slot_pointer_>(p);
+      absolute_cast<slot_pointer_>(p)->next = freeSlots_;
+    freeSlots_ = absolute_cast<slot_pointer_>(p);
   }
 }
 
+template <typename T, size_t BlockSize>
+inline void
+MemoryPool<T, BlockSize>::deallocate(const_pointer p, size_type n)
+{
+  assert(n == 1);
+  if (p != nullptr) {
+      absolute_cast<slot_pointer_>(p)->next = freeSlots_;
+    freeSlots_ = absolute_cast<slot_pointer_>(p);
+  }
+}
 
 
 template <typename T, size_t BlockSize>
@@ -193,7 +208,7 @@ template <class U, class... Args>
 inline void
 MemoryPool<T, BlockSize>::construct(U* p, Args&&... args)
 {
-  new (p) U (std::forward<Args>(args)...);
+  EmplacePoint{}.emplace<U>(p, std::forward<Args>(args)...);
 }
 
 
@@ -223,6 +238,16 @@ MemoryPool<T, BlockSize>::newElement(Args&&... args)
 template <typename T, size_t BlockSize>
 inline void
 MemoryPool<T, BlockSize>::deleteElement(pointer p)
+{
+  if (p != nullptr) {
+    p->~value_type();
+    deallocate(p);
+  }
+}
+
+template <typename T, size_t BlockSize>
+inline void
+MemoryPool<T, BlockSize>::deleteElement(const_pointer p)
 {
   if (p != nullptr) {
     p->~value_type();

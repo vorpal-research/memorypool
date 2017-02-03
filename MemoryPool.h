@@ -25,6 +25,18 @@
 
 #include <climits>
 #include <cstddef>
+#include <cassert>
+#include <cstdint>
+#include <utility>
+
+// aux class to friend by element types
+// FIXME: think
+struct EmplacePoint {
+    template<class T, class ...Args>
+    static void emplace(void* mem, Args&&... args) {
+        new (mem) T(std::forward<Args>(args)...);
+    }
+};
 
 template <typename T, size_t BlockSize = 4096>
 class MemoryPool
@@ -63,6 +75,7 @@ class MemoryPool
     // Can only allocate one object at a time. n and hint are ignored
     pointer allocate(size_type n = 1, const_pointer hint = 0);
     void deallocate(pointer p, size_type n = 1);
+    void deallocate(const_pointer p, size_type n = 1);
 
     size_type max_size() const noexcept;
 
@@ -71,12 +84,15 @@ class MemoryPool
 
     template <class... Args> pointer newElement(Args&&... args);
     void deleteElement(pointer p);
+    void deleteElement(const_pointer p);
 
   private:
     union Slot_ {
       value_type element;
       Slot_* next;
     };
+
+
 
     typedef char* data_pointer_;
     typedef Slot_ slot_type_;
@@ -87,6 +103,9 @@ class MemoryPool
     slot_pointer_ lastSlot_;
     slot_pointer_ freeSlots_;
 
+    static pointer ptr_cast(slot_pointer_ p) {
+        return &p->element;
+    }
     size_type padPointer(data_pointer_ p, size_type align) const noexcept;
     void allocateBlock();
 

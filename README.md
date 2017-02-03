@@ -12,21 +12,21 @@ This library uses variadic templates for perfect argument forwarding and some ot
 What is a Memory Pool
 -------------------------
 You would normally use `malloc` or `new` for dynamic memory management in C/C++. These functions are rather slow and have some memory overhead attached to them. This is fine if you make a few calls and ask for large chunks of memory, but if you need to store many small objects, the time and memory overhead may be unacceptable for high performance programs. This is where a memory pool comes in. 
-A memory pool allocates memory in big chunks and splits the memory into smaller pieces. Every time you request memory, one of these small chunks is returned instead making a call to the OS or the heap allocator. You can only use a memory pool if you know the size of the objects beforehand, but if you do, a memory pool has a lot of advantages:
+A memory pool allocates memory in big chunks and splits the memory into smaller pieces. Every time you request memory, one of these small chunks is returned instead making a call to the OS or the heap allocator. You can only use a memory pool if you know the size_ of the objects beforehand, but if you do, a memory pool has a lot of advantages:
 
 * It is substantially faster than `malloc` or `new`
-* There is almost no memory overhead since the size of each object is known beforehand (i.e. no need to store allocation metadata)
+* There is almost no memory overhead since the size_ of each object is known beforehand (i.e. no need to store allocation metadata)
 * There is little to no memory fragmentation
 * You do not need to free object one by one. The allocator will free all the memory it allocated once its destructor is called. Note that this only works if the objects have a default destructor.
 
 A memory pool has just a few disadvantages:
 
-* Objects have a fixed size which must be known beforehand. This is usually not a problem and mostly the case if you need to allocate them in a bunch
+* Objects have a fixed size_ which must be known beforehand. This is usually not a problem and mostly the case if you need to allocate them in a bunch
 * You may need to fine tune them for your specific application. This is made very easy with the use of template classes.
 
 When to Use
 -------------------------
-You should use a memory pool when you need to allocate many objects of the same size. This is usually the case when you implement common data structures like linked lists, binary search trees, hash tables with chaining and so on. Using a memory pool in these cases will increase performance by several folds and reduce wasted memory substantially.
+You should use a memory pool when you need to allocate many objects of the same size_. This is usually the case when you implement common data structures like linked lists, binary search trees, hash tables with chaining and so on. Using a memory pool in these cases will increase performance by several folds and reduce wasted memory substantially.
 
 C++ Compliance
 -------------------------
@@ -42,7 +42,7 @@ Put `MemoryPool.h` and `MemoryPool.tcc` into your project folder and include `Me
 template <typename T, size_t BlockSize = 4096>
 ```
 
-Here, `T` is the type of the objects you want to allocate and `BlockSize` is the size of the chunks MemoryPool allocates (see [Picking BlockSize] (#picking-blocksize) for more information). `T` can be any object, while `BlockSize` needs to be at least twice the size of `T`. After that, you create an instance of `MemoryPool` class and use it just like a standard allocator object. Here is an example:
+Here, `T` is the type of the objects you want to allocate and `BlockSize` is the size_ of the chunks MemoryPool allocates (see [Picking BlockSize] (#picking-blocksize) for more information). `T` can be any object, while `BlockSize` needs to be at least twice the size_ of `T`. After that, you create an instance of `MemoryPool` class and use it just like a standard allocator object. Here is an example:
 ```C++
 #include <iostream>
 #include "MemoryPool.h"
@@ -86,11 +86,11 @@ More examples are provided with the code.
 
 Picking BlockSize
 -------------------------
-`BlockSize` is the size of the chunks in bytes the allocator will ask from the system. It has to be large enough to contain at least two pointers or two `T` objects, depending on which is bigger. 
+`BlockSize` is the size_ of the chunks in bytes the allocator will ask from the system. It has to be large enough to contain at least two pointers or two `T` objects, depending on which is bigger.
 
-Picking the correct `BlockSize` is essential for good performance. I suggest you pick a power of two, which may decrease memory fragmentation depending on your system. Also, make sure that `BlockSize` is at least several hundred times larger than the size of `T` for maximum performance. The idea is, the greater the `BlockSize`, the less calls to `malloc` the library will make. However, picking a size too big might increase memory usage unnecessarily and actually decrease the performance because `malloc` may need to make many system calls.
+Picking the correct `BlockSize` is essential for good performance. I suggest you pick a power of two, which may decrease memory fragmentation depending on your system. Also, make sure that `BlockSize` is at least several hundred times larger than the size_ of `T` for maximum performance. The idea is, the greater the `BlockSize`, the less calls to `malloc` the library will make. However, picking a size_ too big might increase memory usage unnecessarily and actually decrease the performance because `malloc` may need to make many system calls.
 
-For objects that contain several pointers, the default size of 4096 bytes should be good. If you need bigger object, you may need to time your code with larger sizes and see what works best. Unless you will be maintaining many MemoryPool objects, I do not think you need to go smaller than 4096 bytes. Though if you are working on a more limited platform (that has a copiler with C++11 support), you may need to go for smaller values. 
+For objects that contain several pointers, the default size_ of 4096 bytes should be good. If you need bigger object, you may need to time your code with larger sizes and see what works best. Unless you will be maintaining many MemoryPool objects, I do not think you need to go smaller than 4096 bytes. Though if you are working on a more limited platform (that has a copiler with C++11 support), you may need to go for smaller values.
 
 About the Code
 -------------------------
